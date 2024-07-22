@@ -11,20 +11,25 @@ import { Link, useLocation } from "react-router-dom";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const location = useLocation();
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedMode = localStorage.getItem("darkMode");
-    return savedMode ? JSON.parse(savedMode) : false;
+    if (typeof window !== 'undefined') {
+      const savedMode = localStorage.getItem("darkMode");
+      return savedMode ? JSON.parse(savedMode) : false;
+    }
+    return false;
   });
 
   useEffect(() => {
-    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+      if (isDarkMode) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
     }
   }, [isDarkMode]);
 
@@ -34,10 +39,6 @@ export default function Header() {
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
-  };
-
-  const toggleUserDropdown = () => {
-    setIsUserDropdownOpen(!isUserDropdownOpen);
   };
 
   return (
@@ -65,11 +66,11 @@ export default function Header() {
             Braude Analyzer
           </span>
         </div>
-        {/* the sun and moon icons */}
         <div className="flex items-center md:order-2">
           <button
             onClick={onToggleDarkMode}
             className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm p-2.5 me-2"
+            aria-label="Toggle dark mode"
           >
             <IonIcon
               icon={isDarkMode ? sunnyOutline : moonOutline}
@@ -77,7 +78,6 @@ export default function Header() {
               style={{ fontSize: "24px" }}
             />
           </button>
-          {/* User Dropdown menu */}
           <div
             className={`z-50 ${
               isUserDropdownOpen ? "block" : "hidden"
@@ -104,7 +104,6 @@ export default function Header() {
             </ul>
           </div>
         </div>
-        {/* DropDown menu */}
         <div
           className={`${
             isMenuOpen ? "block" : "hidden"
