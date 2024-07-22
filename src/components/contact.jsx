@@ -15,16 +15,13 @@ export default function Contact() {
             </p>
             <ul className="list-disc pl-5">
               <li>
-                <strong className="font-semibold">Email:</strong> [insert email
-                address]
+                <strong className="font-semibold">Email:</strong> jad.taha@braude.ac.il
               </li>
               <li>
-                <strong className="font-semibold">Phone:</strong> [insert phone
-                number]
+                <strong className="font-semibold">Phone:</strong> +972537377777
               </li>
               <li>
-                <strong className="font-semibold">Address:</strong> [insert physical
-                address]
+                <strong className="font-semibold">Address:</strong> Tel-Aviv
               </li>
             </ul>
           </div>

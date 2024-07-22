@@ -15,22 +15,59 @@ export default function About() {
           <p className="mb-4">
             This website and all of its content, including but not limited to
             text, images, graphics, data, and software, are the exclusive
-            property of Kareem Zeedan, Rami Taha, and Mohammed Khateeb. All
-            rights reserved. No part of this website may be reproduced,
-            distributed, or transmitted in any form or by any means, including
-            photocopying, recording, or other electronic or mechanical methods,
-            without the prior written permission of the owners, except in the
-            case of brief quotations embodied in critical reviews and certain
-            other non-commercial uses permitted by copyright law.
+            property of Kareem Zeedan, Rami Taha, Jad Taha, and Mohammed
+            Khateeb. All rights reserved. No part of this website may be
+            reproduced, distributed, or transmitted in any form or by any means,
+            including photocopying, recording, or other electronic or mechanical
+            methods, without the prior written permission of the owners, except
+            in the case of brief quotations embodied in critical reviews and
+            certain other non-commercial uses permitted by copyright law.
           </p>
           <p className="mb-4">
             Unauthorized use or duplication of any material on this website
             without express and written permission from the owners is strictly
-            prohibited. For permission requests, please contact us at [insert
-            contact information].
+            prohibited.
           </p>
         </section>
-
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold text-blue-700 mb-4">
+            Key Features:
+          </h2>
+          <ul className="list-disc pl-5 mb-4">
+            <li className="mb-2">
+              <strong className="font-semibold">Analyze Excel Files:</strong>{" "}
+              Easily import and analyze your Excel files to extract meaningful
+              insights and trends.
+            </li>
+            <li className="mb-2">
+              <strong className="font-semibold">Advanced Filtering:</strong>{" "}
+              Apply filters based on specific columns to quickly find the data
+              you need.
+            </li>
+            <li className="mb-2">
+              <strong className="font-semibold">Combine Multiple Files:</strong>{" "}
+              Merge more than two Excel files seamlessly, ensuring your data is
+              always organized and accessible.
+            </li>
+            <li className="mb-2">
+              <strong className="font-semibold">
+                Custom Column Filtering:
+              </strong>{" "}
+              Tailor your data views by filtering columns to focus on the
+              information that matters most. and trends in video content.
+            </li>
+            <li className="mb-2">
+              <strong className="font-semibold">Download Custom Files:</strong>{" "}
+              Export your filtered and combined data into new Excel files, ready
+              for download and further use.
+            </li>
+            <li className="mb-2">
+              <strong className="font-semibold">Data Visualization:</strong>{" "}
+              Create pie charts and plots to visualize your data, making it
+              easier to understand and present.
+            </li>
+          </ul>
+        </section>
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-blue-700 mb-4">
             Commitment to Quality
@@ -43,31 +80,37 @@ export default function About() {
           </p>
           <ul className="list-disc pl-5 mb-4">
             <li className="mb-2">
-              <strong className="font-semibold">Accurate Data:</strong> All video
-              data provided on our website is sourced from reputable and
+              <strong className="font-semibold">Accurate Data:</strong> All
+              video data provided on our website is sourced from reputable and
               verified sources. We ensure the accuracy and reliability of the
               data by conducting thorough checks and validations.
             </li>
             <li className="mb-2">
-              <strong className="font-semibold">Comprehensive Information:</strong>{" "}
+              <strong className="font-semibold">
+                Comprehensive Information:
+              </strong>{" "}
               We provide detailed and comprehensive information about each
               video, including metadata, descriptions, ratings, and statistics,
               to offer users a complete understanding of the content.
             </li>
             <li className="mb-2">
-              <strong className="font-semibold">User-Friendly Presentation:</strong>{" "}
+              <strong className="font-semibold">
+                User-Friendly Presentation:
+              </strong>{" "}
               Our video data is presented in a clear and user-friendly manner.
               We use intuitive designs and interfaces to make it easy for users
               to access and interpret the information.
             </li>
             <li className="mb-2">
-              <strong className="font-semibold">Continuous Updates:</strong> We are
-              committed to keeping our data current and relevant. We regularly
-              update our database to reflect the latest information and trends
-              in video content.
+              <strong className="font-semibold">Continuous Updates:</strong> We
+              are committed to keeping our data current and relevant. We
+              regularly update our database to reflect the latest information
+              and trends in video content.
             </li>
             <li className="mb-2">
-              <strong className="font-semibold">Feedback and Improvement:</strong>{" "}
+              <strong className="font-semibold">
+                Feedback and Improvement:
+              </strong>{" "}
               We actively seek feedback from our users to improve the quality
               and presentation of our video data. We use this feedback to
               enhance our content and ensure it meets the needs and expectations
@@ -105,8 +148,6 @@ export default function About() {
             conditions.
           </p>
         </section>
-
-        <p className="text-right italic mt-8">Effective Date: [insert date]</p>
       </div>
     </MainLayout>
   );

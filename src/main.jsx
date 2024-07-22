@@ -5,12 +5,10 @@ import "./index.css";
 import Home from "./components/home";
 import Contact from "./components/contact";
 import About from "./components/about";
-import Login from "./components/login";
-import Register from "./components/register";
 import UploadFile from "./components/uploadFile";
-import Table from "./components/table";
-import Chart from "./components/chart";
-import Plot from "./components/plot";
+import ColumnSelector from "./components/columnSelector";
+import Comparision from "./components/comparision";
+import braudeLogo from './assets/braude_logo.png';
 
 const router = createBrowserRouter([
   {
@@ -30,30 +28,29 @@ const router = createBrowserRouter([
     element: <About />,
   },
   {
-    path: "/login",
-    element: <Login />,
-  },
-  {
-    path: "/register",
-    element: <Register />,
-  },
-  {
     path: "/uploadFile",
     element: <UploadFile />,
   },
   {
-    path: "/table",
-    element: <Table />,
+    path: "/columnSelector",
+    element: <ColumnSelector />,
   },
   {
-    path: "/chart",
-    element: <Chart />,
-  },
-  {
-    path: "/plot",
-    element: <Plot />,
+    path: "/comparision",
+    element: <Comparision />,
   },
 ]);
+
+// Function to set the favicon
+function setFavicon(url) {
+  const link = document.createElement('link');
+  link.rel = 'icon';
+  link.href = url;
+  document.head.appendChild(link);
+}
+
+// Set the favicon when the app loads
+setFavicon(braudeLogo);
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<RouterProvider router={router} />);

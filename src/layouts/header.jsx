@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import logo from "../assets/logo.png";
-import profileLogo from "../assets/profileLogo.png";
+import logo from "../assets/braude_logo.png";
 import { IonIcon } from "@ionic/react";
 import {
   menuOutline,
@@ -52,11 +51,18 @@ export default function Header() {
             aria-controls="mobile-menu"
             aria-expanded={isMenuOpen}
           >
-            <IonIcon icon={isMenuOpen ? closeOutline : menuOutline} style={{ fontSize: '24px' }}/>
+            <IonIcon
+              icon={isMenuOpen ? closeOutline : menuOutline}
+              style={{ fontSize: "24px" }}
+            />
           </button>
-          <img className="h-6 sm:h-8 md:h-10 lg:h-12 xl:h-14 mr-3" src={logo} alt="logo" />
+          <img
+            className="h-6 sm:h-8 md:h-10 lg:h-12 xl:h-14 mr-3"
+            src={logo}
+            alt="logo"
+          />
           <span className="self-center text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-semibold whitespace-nowrap dark:text-white">
-            WebSite Name
+            Braude Analyzer
           </span>
         </div>
         {/* the sun and moon icons */}
@@ -68,19 +74,7 @@ export default function Header() {
             <IonIcon
               icon={isDarkMode ? sunnyOutline : moonOutline}
               className="text-3xl"
-              style={{ fontSize: '24px' }}
-            />
-          </button>
-          {/* the profilelogo */}
-          <button
-            type="button"
-            className="flex text-sm bg-gray-800 rounded-full md:me-0"
-            onClick={toggleUserDropdown}
-          >
-            <img
-              className="w-8 h-8 rounded-full bg-white"
-              src={profileLogo}
-              alt="profileLogo"
+              style={{ fontSize: "24px" }}
             />
           </button>
           {/* User Dropdown menu */}
@@ -128,6 +122,42 @@ export default function Header() {
                 }`}
               >
                 Home
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/uploadFile"
+                className={`block py-2 px-3 rounded hover:bg-gray-100 md:hover:bg-transparent md:p-0 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent ${
+                  location.pathname === "/uploadFile"
+                    ? "text-blue-700 dark:text-blue-500"
+                    : "text-gray-900 dark:text-white md:dark:hover:text-blue-500"
+                }`}
+              >
+                Upload File
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/columnSelector"
+                className={`block py-2 px-3 rounded hover:bg-gray-100 md:hover:bg-transparent md:p-0 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent ${
+                  location.pathname === "/columnSelector"
+                    ? "text-blue-700 dark:text-blue-500"
+                    : "text-gray-900 dark:text-white md:dark:hover:text-blue-500"
+                }`}
+              >
+                Column Selector
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/comparision"
+                className={`block py-2 px-3 rounded hover:bg-gray-100 md:hover:bg-transparent md:p-0 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent ${
+                  location.pathname === "/comparision"
+                    ? "text-blue-700 dark:text-blue-500"
+                    : "text-gray-900 dark:text-white md:dark:hover:text-blue-500"
+                }`}
+              >
+                Comparision
               </Link>
             </li>
             <li>
