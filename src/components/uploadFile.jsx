@@ -1,17 +1,19 @@
 import React, { useState, useMemo } from "react";
 import MainLayout from "../layouts/mainLayout";
 import * as XLSX from "xlsx";
-import { Line, Pie } from "react-chartjs-2";
+import { Line, Bar, Pie, Scatter, Radar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   ArcElement,
   Title,
   Tooltip,
   Legend,
+  RadialLinearScale,
 } from "chart.js";
 
 ChartJS.register(
@@ -19,155 +21,217 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   ArcElement,
   Title,
   Tooltip,
   Legend,
+  RadialLinearScale
 );
 
 export default function UploadFile() {
-  const [excelFile, setExcelFile] = useState(null);
-  const [typeError, setTypeError] = useState(null);
-  const [excelData, setExcelData] = useState(null);
-  const [selectedColumns, setSelectedColumns] = useState({
-    x: "",
-    y: "",
-    pie: "",
-    table: [],
-  });
-  const [filters, setFilters] = useState({});
-  const [currentFilter, setCurrentFilter] = useState("");
+  const [excelFiles, setExcelFiles] = useState([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState(null);
+  const [typeError, setTypeError] = useState("");
 
   const handleFile = (e) => {
-    let fileTypes = [
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "text/csv",
-    ];
-    let selectedFile = e.target.files[0];
-    if (selectedFile) {
-      if (fileTypes.includes(selectedFile.type)) {
-        setTypeError(null);
-        let reader = new FileReader();
-        reader.readAsArrayBuffer(selectedFile);
-        reader.onload = (e) => {
-          setExcelFile(e.target.result);
-        };
-      } else {
-        setTypeError("Please select only excel file types");
-        setExcelFile(null);
-      }
-    } else {
-      console.log("Please select your file");
+    const files = Array.from(e.target.files);
+    const validFiles = files.filter(file => {
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      return ['xlsx', 'xls', 'csv'].includes(fileExtension);
+    });
+
+    if (validFiles.length !== files.length) {
+      setTypeError("Please upload only Excel files (.xlsx, .xls, .csv)");
+      return;
     }
+
+    const newFiles = validFiles.map(file => ({
+      file,
+      data: null,
+      chartConfig: {
+        chartType: "",
+        xAxis: "",
+        yAxis: "",
+      }
+    }));
+
+    setExcelFiles(prevFiles => [...prevFiles, ...newFiles]);
+    setTypeError("");
   };
 
-  const handleFileSubmit = (e) => {
+  const handleFileSubmit = async (e) => {
     e.preventDefault();
-    if (excelFile !== null) {
-      const workbook = XLSX.read(excelFile, { type: "buffer" });
-      const worksheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[worksheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet);
-      setExcelData(data);
+    if (excelFiles.length === 0) {
+      setTypeError("Please upload a file.");
+      return;
     }
+
+    const updatedFiles = await Promise.all(excelFiles.map(async (fileObj) => {
+      if (fileObj.data) return fileObj;
+
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const binaryString = event.target.result;
+          const workbook = XLSX.read(binaryString, { type: "binary" });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          // Convert timestamp to desired format
+          data.forEach((row, index) => {
+            if (index > 0 && row[0]) {
+              const date = XLSX.SSF.parse_date_code(row[0]);
+              row[0] = `${date.d.toString().padStart(2, '0')}/${date.m.toString().padStart(2, '0')}/${date.y} ${date.H.toString().padStart(2, '0')}:${date.M.toString().padStart(2, '0')}`;
+            }
+          });
+
+          resolve({ ...fileObj, data });
+        };
+
+        reader.onerror = (error) => {
+          setTypeError("Error reading file.");
+          console.error(error);
+          resolve(fileObj);
+        };
+
+        reader.readAsBinaryString(fileObj.file);
+      });
+    }));
+
+    setExcelFiles(updatedFiles);
+    setCurrentFileIndex(0);
+    setTypeError("");
   };
 
-  const handleColumnSelect = (type, column) => {
-    setSelectedColumns((prev) => ({ ...prev, [type]: column }));
+  const selectFile = (index) => {
+    setCurrentFileIndex(index);
   };
 
-  const handleFilterChange = (column, value) => {
-    setFilters((prev) => {
-      const newFilters = { ...prev, [column]: value };
-      if (value === "") {
-        delete newFilters[column];
+  const deleteFile = (index) => {
+    const newFiles = excelFiles.filter((_, i) => i !== index);
+    setExcelFiles(newFiles);
+
+    if (index === currentFileIndex) {
+      if (newFiles.length === 0) {
+        setCurrentFileIndex(null);
+      } else {
+        setCurrentFileIndex(Math.min(currentFileIndex, newFiles.length - 1));
       }
-      return newFilters;
-    });
-    // Removed setCurrentFilter("") from here
-  };
-
-  const clearFilter = (column) => {
-    setFilters((prev) => {
-      const newFilters = { ...prev };
-      delete newFilters[column];
-      return newFilters;
-    });
-    if (currentFilter === column) {
-      setCurrentFilter("");
     }
   };
 
-  const prepareLineChartData = () => {
-    if (!excelData || !selectedColumns.x || !selectedColumns.y) return null;
-
-    const labels = excelData.map((row) => row[selectedColumns.x]);
-    const data = excelData.map((row) => row[selectedColumns.y]);
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: selectedColumns.y,
-          data: data,
-          borderColor: "rgb(75, 192, 192)",
-          tension: 0.1,
-        },
-      ],
-    };
+  const updateChartConfig = (key, value) => {
+    setExcelFiles(prevFiles => prevFiles.map((file, index) => 
+      index === currentFileIndex 
+        ? { ...file, chartConfig: { ...file.chartConfig, [key]: value } }
+        : file
+    ));
   };
 
-  const preparePieChartData = () => {
-    if (!excelData || !selectedColumns.pie) return null;
+  const chartData = useMemo(() => {
+    if (currentFileIndex === null) return null;
 
-    const data = excelData.reduce((acc, row) => {
-      const value = row[selectedColumns.pie];
-      acc[value] = (acc[value] || 0) + 1;
-      return acc;
-    }, {});
+    const currentFile = excelFiles[currentFileIndex];
+    const { data, chartConfig } = currentFile;
 
-    return {
-      labels: Object.keys(data),
-      datasets: [
-        {
-          data: Object.values(data),
-          backgroundColor: [
-            "rgba(255, 99, 132, 0.6)",
-            "rgba(54, 162, 235, 0.6)",
-            "rgba(255, 206, 86, 0.6)",
-            "rgba(75, 192, 192, 0.6)",
-            "rgba(153, 102, 255, 0.6)",
+    if (data && chartConfig.xAxis && chartConfig.yAxis) {
+      const xIndex = data[0].indexOf(chartConfig.xAxis);
+      const yIndex = data[0].indexOf(chartConfig.yAxis);
+
+      const labels = data.slice(1).map((row) => row[xIndex]);
+      const chartValues = data.slice(1).map((row) => row[yIndex]);
+
+      if (chartConfig.chartType === "line") {
+        return {
+          labels,
+          datasets: [
+            {
+              label: chartConfig.yAxis,
+              data: chartValues,
+              borderColor: "rgb(75, 192, 192)",
+              tension: 0.1,
+            },
           ],
-        },
-      ],
-    };
-  };
-
-  const filteredData = useMemo(() => {
-    if (!excelData) return [];
-    return excelData.filter((row) =>
-      Object.entries(filters).every(
-        ([key, value]) =>
-          value === "" ||
-          row[key].toString().toLowerCase().includes(value.toLowerCase()),
-      ),
-    );
-  }, [excelData, filters]);
-
-  const lineChartData = prepareLineChartData();
-  const pieChartData = preparePieChartData();
+        };
+      } else if (chartConfig.chartType === "bar") {
+        return {
+          labels,
+          datasets: [
+            {
+              label: chartConfig.yAxis,
+              data: chartValues,
+              backgroundColor: "rgba(0, 119, 182, 0.6)",
+              borderColor: "rgba(0, 119, 182, 1)",
+              borderWidth: 1,
+            },
+          ],
+        };
+      } else if (chartConfig.chartType === "pie") {
+        const uniqueLabels = [...new Set(labels)];
+        const dataCount = uniqueLabels.map((label) =>
+          labels.filter((l) => l === label).length
+        );
+        return {
+          labels: uniqueLabels,
+          datasets: [
+            {
+              data: dataCount,
+              backgroundColor: [
+                "rgba(255, 99, 132, 0.8)",
+                "rgba(54, 162, 235, 0.8)",
+                "rgba(255, 206, 86, 0.8)",
+                "rgba(75, 192, 192, 0.8)",
+                "rgba(153, 102, 255, 0.8)",
+              ],
+            },
+          ],
+        };
+      } else if (chartConfig.chartType === "scatter") {
+        return {
+          labels,
+          datasets: [
+            {
+              label: chartConfig.yAxis,
+              data: data.slice(1).map((row) => ({
+                x: row[xIndex],
+                y: row[yIndex],
+              })),
+              backgroundColor: "rgba(75, 192, 192, 0.2)",
+              borderColor: "rgb(75, 192, 192)",
+            },
+          ],
+        };
+      } else if (chartConfig.chartType === "radar") {
+        return {
+          labels,
+          datasets: [
+            {
+              label: chartConfig.yAxis,
+              data: chartValues,
+              backgroundColor: "rgba(75, 192, 192, 0.2)",
+              borderColor: "rgb(75, 192, 192)",
+            },
+          ],
+        };
+      }
+    }
+    return null;
+  }, [excelFiles, currentFileIndex]);
 
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 max-w-7xl mx-auto">
         <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-          Upload Excel & Visualize Data
+          Upload Excel & Analyze Data
         </h3>
 
         <form className="mb-6" onSubmit={handleFileSubmit}>
           <input
             type="file"
+            multiple
+            accept=".xlsx,.xls,.csv"
             className="block w-full text-sm text-gray-500 dark:text-gray-300
               file:mr-4 file:py-2 file:px-4
               file:rounded-full file:border-0
@@ -195,213 +259,115 @@ export default function UploadFile() {
           )}
         </form>
 
-        {excelData && (
-          <div className="mb-4">
-            <h4 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
-              Select Columns for Graphs
+        {excelFiles.length > 0 && (
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
+              Uploaded Files
             </h4>
-            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-              <div className="w-full sm:w-1/3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Line Chart X-Axis
-                </label>
-                <select
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  onChange={(e) => handleColumnSelect("x", e.target.value)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {excelFiles.map((fileObj, index) => (
+                <div
+                  key={index}
+                  className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                    index === currentFileIndex
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900"
+                      : "border-gray-200 hover:border-blue-300 dark:border-gray-700 dark:hover:border-blue-500"
+                  }`}
+                  onClick={() => selectFile(index)}
                 >
-                  <option value="">Select column</option>
-                  {excelData &&
-                    Object.keys(excelData[0]).map((column) => (
-                      <option key={column} value={column}>
-                        {column}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div className="w-full sm:w-1/3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Line Chart Y-Axis
-                </label>
-                <select
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  onChange={(e) => handleColumnSelect("y", e.target.value)}
-                >
-                  <option value="">Select column</option>
-                  {excelData &&
-                    Object.keys(excelData[0]).map((column) => (
-                      <option key={column} value={column}>
-                        {column}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div className="w-full sm:w-1/3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Pie Chart Data
-                </label>
-                <select
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  onChange={(e) => handleColumnSelect("pie", e.target.value)}
-                >
-                  <option value="">Select column</option>
-                  {excelData &&
-                    Object.keys(excelData[0]).map((column) => (
-                      <option key={column} value={column}>
-                        {column}
-                      </option>
-                    ))}
-                </select>
-              </div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                    {fileObj.file.name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {(fileObj.file.size / 1024).toFixed(2)} KB
+                  </p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteFile(index);
+                    }}
+                    className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
+                  >
+                    DELETE
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        <div className="flex flex-col lg:flex-row space-y-4 lg:space-y-0 lg:space-x-4">
-          {lineChartData && (
-            <div className="mt-4 w-full lg:w-1/2">
-              <h4 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
-                Line Chart
-              </h4>
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg">
-                <Line
-                  data={lineChartData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        labels: {
-                          color: "rgb(156, 163, 175)",
-                        },
-                      },
-                    },
-                    scales: {
-                      x: {
-                        ticks: { color: "rgb(156, 163, 175)" },
-                        grid: { color: "rgba(156, 163, 175, 0.2)" },
-                      },
-                      y: {
-                        ticks: { color: "rgb(156, 163, 175)" },
-                        grid: { color: "rgba(156, 163, 175, 0.2)" },
-                      },
-                    },
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
-          {pieChartData && (
-            <div className="mt-4 w-full lg:w-1/2">
-              <h4 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
-                Pie Chart
-              </h4>
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg">
-                <Pie
-                  data={pieChartData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        labels: {
-                          color: "rgb(156, 163, 175)",
-                        },
-                      },
-                    },
-                  }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {excelData && (
-          <div className="mt-6">
-            <h4 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
-              Data Table with Filters
+        {currentFileIndex !== null && excelFiles[currentFileIndex].data && (
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h4 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+              Chart Configuration
             </h4>
-            <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Chart Type
+              </label>
               <select
-                className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                onChange={(e) => setCurrentFilter(e.target.value)}
-                value={currentFilter}
+                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                value={excelFiles[currentFileIndex].chartConfig.chartType}
+                onChange={(e) => updateChartConfig("chartType", e.target.value)}
               >
-                <option value="">Select a filter</option>
-                {excelData &&
-                  Object.keys(excelData[0]).map((column) => (
-                    <option key={column} value={column}>
-                      {column}
-                    </option>
-                  ))}
+                <option value="">Select Chart Type</option>
+                <option value="line">Line</option>
+                <option value="bar">Bar</option>
+                <option value="pie">Pie</option>
+                <option value="scatter">Scatter</option>
+                <option value="radar">Radar</option>
               </select>
-              {currentFilter && (
-                <input
-                  type="text"
-                  className="block w-full sm:w-64 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder={`Filter ${currentFilter}`}
-                  onChange={(e) =>
-                    handleFilterChange(currentFilter, e.target.value)
-                  }
-                  value={filters[currentFilter] || ""}
-                />
-              )}
             </div>
-            <div className="mb-2">
-              <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Active Filters:
-              </h5>
-              <div className="flex flex-wrap mt-1">
-                {Object.entries(filters).map(
-                  ([key, value]) =>
-                    value && (
-                      <span
-                        key={key}
-                        className="mr-2 mb-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm dark:bg-blue-900 dark:text-blue-200"
-                      >
-                        {key}: {value}
-                        <button
-                          className="ml-1 text-blue-500 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-100"
-                          onClick={() => clearFilter(key)}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ),
-                )}
+
+            {excelFiles[currentFileIndex].chartConfig.chartType && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    X-Axis
+                  </label>
+                  <select
+                    className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                    value={excelFiles[currentFileIndex].chartConfig.xAxis}
+                    onChange={(e) => updateChartConfig("xAxis", e.target.value)}
+                  >
+                    <option value="">Select X-Axis</option>
+                    {excelFiles[currentFileIndex].data[0].map((colName, index) => (
+                      <option key={index} value={colName}>
+                        {colName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Y-Axis
+                  </label>
+                  <select
+                    className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                    value={excelFiles[currentFileIndex].chartConfig.yAxis}
+                    onChange={(e) => updateChartConfig("yAxis", e.target.value)}
+                  >
+                    <option value="">Select Y-Axis</option>
+                    {excelFiles[currentFileIndex].data[0].map((colName, index) => (
+                      <option key={index} value={colName}>
+                        {colName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white dark:bg-gray-800">
-                <thead className="bg-gray-100 dark:bg-gray-700">
-                  <tr>
-                    {excelData &&
-                      Object.keys(excelData[0]).map((key) => (
-                        <th
-                          key={key}
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300"
-                        >
-                          {key}
-                        </th>
-                      ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredData.map((row, index) => (
-                    <tr key={index}>
-                      {Object.keys(row).map((key) => (
-                        <td
-                          key={key}
-                          className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
-                        >
-                          {row[key]}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            )}
+
+            {excelFiles[currentFileIndex].chartConfig.chartType && chartData && (
+              <div className="mt-6 bg-white dark:bg-gray-700 p-4 rounded-lg shadow">
+                {excelFiles[currentFileIndex].chartConfig.chartType === "line" && <Line data={chartData} />}
+                {excelFiles[currentFileIndex].chartConfig.chartType === "bar" && <Bar data={chartData} />}
+                {excelFiles[currentFileIndex].chartConfig.chartType === "pie" && <Pie data={chartData} />}
+                {excelFiles[currentFileIndex].chartConfig.chartType === "scatter" && <Scatter data={chartData} />}
+                {excelFiles[currentFileIndex].chartConfig.chartType === "radar" && <Radar data={chartData} />}
+              </div>
+            )}
           </div>
         )}
       </div>
