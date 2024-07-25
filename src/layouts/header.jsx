@@ -137,14 +137,14 @@ export default function Header() {
             </li>
             <li>
               <Link
-                to="/columnSelector"
+                to="/combineFiles"
                 className={`block py-2 px-3 rounded hover:bg-gray-100 md:hover:bg-transparent md:p-0 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent ${
-                  location.pathname === "/columnSelector"
+                  location.pathname === "/combineFiles"
                     ? "text-blue-700 dark:text-blue-500"
                     : "text-gray-900 dark:text-white md:dark:hover:text-blue-500"
                 }`}
               >
-                Column Selector
+                Combine Files
               </Link>
             </li>
             <li>

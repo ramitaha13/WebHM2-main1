@@ -6,7 +6,7 @@ import Home from "./components/home";
 import Contact from "./components/contact";
 import About from "./components/about";
 import UploadFile from "./components/uploadFile";
-import ColumnSelector from "./components/columnSelector";
+import CombineFiles from "./components/combineFiles";
 import Comparision from "./components/comparision";
 import braudeLogo from './assets/braude_logo.png';
 
@@ -32,8 +32,8 @@ const router = createBrowserRouter([
     element: <UploadFile />,
   },
   {
-    path: "/columnSelector",
-    element: <ColumnSelector />,
+    path: "/combineFiles",
+    element: <CombineFiles />,
   },
   {
     path: "/comparision",

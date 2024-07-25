@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from "react";
+import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from "xlsx";
 import MainLayout from "../layouts/mainLayout";
@@ -37,10 +37,11 @@ function formatDate(date) {
     .replace(",", "");
 }
 
-export default function ColumnSelector() {
+export default function CombineFiles() {
   const [excelFiles, setExcelFiles] = useState([]);
   const [columns, setColumns] = useState({});
   const [selectedColumns, setSelectedColumns] = useState([]);
+  const [sharedColumns, setSharedColumns] = useState([]);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
@@ -121,6 +122,26 @@ export default function ColumnSelector() {
     });
   }, []);
 
+  const handleSharedColumnSelect = useCallback((column) => {
+    setSelectedColumns((prev) => {
+      const isColumnSelected = Object.keys(columns).every((fileName) =>
+        prev.some((col) => col.column === column && col.fileName === fileName)
+      );
+
+      if (isColumnSelected) {
+        // Unselect the column from all files
+        return prev.filter((col) => col.column !== column);
+      } else {
+        // Select the column for all files
+        const newSelections = Object.keys(columns).map((fileName) => ({
+          fileName,
+          column,
+        }));
+        return [...prev.filter((col) => col.column !== column), ...newSelections];
+      }
+    });
+  }, [columns]);
+
   const handleDeleteFile = useCallback((fileName) => {
     setExcelFiles((prevFiles) =>
       prevFiles.filter((file) => file.name !== fileName),
@@ -143,25 +164,26 @@ export default function ColumnSelector() {
         if (file) {
           const processedFile = await processExcelFile(file);
           setExcelFiles((prevFiles) =>
-            prevFiles.map((f) => (f.name === fileName ? processedFile : f)),
+            prevFiles.map((f) => (f.name === fileName ? processedFile : f))
           );
-          setColumns((prevColumns) => ({
-            ...prevColumns,
-            [processedFile.name]: processedFile.headers,
-          }));
+          setColumns((prevColumns) => {
+            const newColumns = { ...prevColumns };
+            delete newColumns[fileName];
+            newColumns[processedFile.name] = processedFile.headers;
+            return newColumns;
+          });
           setSelectedColumns((prevSelected) =>
             prevSelected.map((col) =>
               col.fileName === fileName
                 ? { ...col, fileName: processedFile.name }
-                : col,
-            ),
+                : col
+            )
           );
         }
       };
     },
-    [processExcelFile],
+    [processExcelFile]
   );
-
   const combinedData = useMemo(() => {
     return selectedColumns.map(({ fileName, column }) => {
       const file = excelFiles.find((f) => f.name === fileName);
@@ -202,6 +224,19 @@ export default function ColumnSelector() {
     XLSX.writeFile(workbook, "combined_data.xlsx");
   }, [previewData]);
 
+  useEffect(() => {
+    if (Object.keys(columns).length > 0) {
+      const allColumns = Object.values(columns).flat();
+      const shared = [...new Set(allColumns.filter(
+        (column) =>
+          Object.values(columns).every((fileColumns) =>
+            fileColumns.includes(column),
+          ),
+      ))];
+      setSharedColumns(shared);
+    }
+  }, [columns]);
+
   return (
     <MainLayout>
       <div className="p-6 max-w-7xl mx-auto">
@@ -218,13 +253,20 @@ export default function ColumnSelector() {
         {error && <ErrorMessage message={error} />}
 
         {Object.keys(columns).length > 0 && (
-          <ColumnSelection
-            columns={columns}
-            selectedColumns={selectedColumns}
-            handleColumnSelect={handleColumnSelect}
-            handleDeleteFile={handleDeleteFile}
-            handleReplaceFile={handleReplaceFile}
-          />
+          <>
+            <SharedColumnSelection
+              sharedColumns={sharedColumns}
+              selectedColumns={selectedColumns}
+              handleSharedColumnSelect={handleSharedColumnSelect}
+            />
+            <ColumnSelection
+              columns={columns}
+              selectedColumns={selectedColumns}
+              handleColumnSelect={handleColumnSelect}
+              handleDeleteFile={handleDeleteFile}
+              handleReplaceFile={handleReplaceFile}
+            />
+          </>
         )}
 
         {previewData.length > 0 && (
@@ -265,6 +307,40 @@ const DropZone = React.memo(({ getRootProps, getInputProps, isDragActive }) => (
 const ErrorMessage = React.memo(({ message }) => (
   <p className="text-red-500 mb-4">{message}</p>
 ));
+
+const SharedColumnSelection = React.memo(
+  ({ sharedColumns, selectedColumns, handleSharedColumnSelect }) => (
+    <div className="mb-6">
+      <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+        Shared Columns
+      </h2>
+      {sharedColumns.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {sharedColumns.map((column) => {
+            const isSelected = selectedColumns.some((col) => col.column === column);
+            return (
+              <button
+                key={column}
+                onClick={() => handleSharedColumnSelect(column)}
+                className={`px-3 py-1 rounded ${
+                  isSelected
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                }`}
+              >
+                {column}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-gray-600 dark:text-gray-400">
+          No shared columns found across all files.
+        </p>
+      )}
+    </div>
+  ),
+);
 
 const ColumnSelection = React.memo(
   ({
@@ -330,70 +406,77 @@ const DataPreview = React.memo(
     currentPage,
     totalPages,
     setCurrentPage,
-  }) => (
-    <>
-      <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
-        Preview
-      </h2>
-      <div className="mb-6 overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              {selectedColumns.map(({ column }) => (
-                <th
-                  key={column}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300"
-                >
-                  {column}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
-            {previewData.map((row, index) => (
-              <tr key={index}>
-                {selectedColumns.map(({ column }) => (
-                  <td
+  }) => {
+    // Create an array of unique column names
+    const uniqueColumns = useMemo(() => {
+      return [...new Set(selectedColumns.map(({ column }) => column))];
+    }, [selectedColumns]);
+
+    return (
+      <>
+        <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+          Preview
+        </h2>
+        <div className="mb-6 overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                {uniqueColumns.map((column) => (
+                  <th
                     key={column}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300"
                   >
-                    {row[column]}
-                  </td>
+                    {column}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+              {previewData.map((row, index) => (
+                <tr key={index}>
+                  {uniqueColumns.map((column) => (
+                    <td
+                      key={column}
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
+                    >
+                      {row[column]}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-      <div className="flex justify-between items-center mb-4">
-        <button
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-        >
-          Previous Page
-        </button>
-        <span className="text-gray-700 dark:text-gray-300">
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          onClick={() =>
-            setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-          }
-          disabled={currentPage === totalPages}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-        >
-          Next Page
-        </button>
-      </div>
+        <div className="flex justify-between items-center mb-4">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Previous Page
+          </button>
+          <span className="text-gray-700 dark:text-gray-300">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Next Page
+          </button>
+        </div>
 
-      <button
-        onClick={downloadFilteredExcel}
-        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
-      >
-        Download Combined Excel
-      </button>
-    </>
-  ),
+        <button
+          onClick={downloadFilteredExcel}
+          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
+        >
+          Download Combined Excel
+        </button>
+      </>
+    );
+  }
 );
