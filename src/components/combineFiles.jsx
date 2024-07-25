@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+} from "react";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from "xlsx";
 import MainLayout from "../layouts/mainLayout";
@@ -122,25 +128,37 @@ export default function CombineFiles() {
     });
   }, []);
 
-  const handleSharedColumnSelect = useCallback((column) => {
-    setSelectedColumns((prev) => {
-      const isColumnSelected = Object.keys(columns).every((fileName) =>
-        prev.some((col) => col.column === column && col.fileName === fileName)
-      );
+  const handleSharedColumnSelect = useCallback(
+    (column) => {
+      setSelectedColumns((prev) => {
+        const isColumnSelected = Object.keys(columns).every((fileName) =>
+          prev.some(
+            (col) => col.column === column && col.fileName === fileName,
+          ),
+        );
 
-      if (isColumnSelected) {
-        // Unselect the column from all files
-        return prev.filter((col) => col.column !== column);
-      } else {
-        // Select the column for all files
-        const newSelections = Object.keys(columns).map((fileName) => ({
-          fileName,
-          column,
-        }));
-        return [...prev.filter((col) => col.column !== column), ...newSelections];
-      }
-    });
-  }, [columns]);
+        if (isColumnSelected) {
+          // Unselect the column from all files
+          return prev.filter((col) => col.column !== column);
+        } else {
+          // Select the column for all files
+          const newSelections = Object.keys(columns)
+            .filter(
+              (fileName) =>
+                !prev.some(
+                  (col) => col.fileName === fileName && col.column === column,
+                ),
+            )
+            .map((fileName) => ({
+              fileName,
+              column,
+            }));
+          return [...prev, ...newSelections];
+        }
+      });
+    },
+    [columns],
+  );
 
   const handleDeleteFile = useCallback((fileName) => {
     setExcelFiles((prevFiles) =>
@@ -164,7 +182,7 @@ export default function CombineFiles() {
         if (file) {
           const processedFile = await processExcelFile(file);
           setExcelFiles((prevFiles) =>
-            prevFiles.map((f) => (f.name === fileName ? processedFile : f))
+            prevFiles.map((f) => (f.name === fileName ? processedFile : f)),
           );
           setColumns((prevColumns) => {
             const newColumns = { ...prevColumns };
@@ -176,38 +194,47 @@ export default function CombineFiles() {
             prevSelected.map((col) =>
               col.fileName === fileName
                 ? { ...col, fileName: processedFile.name }
-                : col
-            )
+                : col,
+            ),
           );
         }
       };
     },
-    [processExcelFile]
+    [processExcelFile],
   );
   const combinedData = useMemo(() => {
-    return selectedColumns.map(({ fileName, column }) => {
+    const data = {};
+    selectedColumns.forEach(({ fileName, column }) => {
+      if (!data[column]) {
+        data[column] = [];
+      }
       const file = excelFiles.find((f) => f.name === fileName);
-      return {
-        [column]: file.data.map((row) => {
+      if (file) {
+        const fileData = file.data.map((row) => {
           const value = row[column];
-          if (typeof value === "number" && value > 1) {
-            return formatDate(excelDateToJSDate(value));
-          }
-          return value;
-        }),
-      };
+          return typeof value === "number" && value > 1
+            ? formatDate(excelDateToJSDate(value))
+            : value;
+        });
+        data[column] = [...data[column], ...fileData];
+      }
     });
+    return data;
   }, [selectedColumns, excelFiles]);
 
   const previewData = useMemo(() => {
-    return combinedData.reduce((acc, curr) => {
-      const key = Object.keys(curr)[0];
-      curr[key].forEach((value, index) => {
-        if (!acc[index]) acc[index] = {};
-        acc[index][key] = value;
+    const columns = Object.keys(combinedData);
+    const maxLength = Math.max(
+      ...columns.map((col) => combinedData[col].length),
+    );
+
+    return Array.from({ length: maxLength }, (_, rowIndex) => {
+      const rowData = {};
+      columns.forEach((column) => {
+        rowData[column] = combinedData[column][rowIndex] || "";
       });
-      return acc;
-    }, []);
+      return rowData;
+    });
   }, [combinedData]);
 
   const totalPages = Math.ceil(previewData.length / rowsPerPage);
@@ -227,12 +254,15 @@ export default function CombineFiles() {
   useEffect(() => {
     if (Object.keys(columns).length > 0) {
       const allColumns = Object.values(columns).flat();
-      const shared = [...new Set(allColumns.filter(
-        (column) =>
-          Object.values(columns).every((fileColumns) =>
-            fileColumns.includes(column),
+      const shared = [
+        ...new Set(
+          allColumns.filter((column) =>
+            Object.values(columns).every((fileColumns) =>
+              fileColumns.includes(column),
+            ),
           ),
-      ))];
+        ),
+      ];
       setSharedColumns(shared);
     }
   }, [columns]);
@@ -271,12 +301,9 @@ export default function CombineFiles() {
 
         {previewData.length > 0 && (
           <DataPreview
-            previewData={paginatedData}
+            previewData={previewData}
             selectedColumns={selectedColumns}
             downloadFilteredExcel={downloadFilteredExcel}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            setCurrentPage={setCurrentPage}
           />
         )}
       </div>
@@ -317,7 +344,9 @@ const SharedColumnSelection = React.memo(
       {sharedColumns.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {sharedColumns.map((column) => {
-            const isSelected = selectedColumns.some((col) => col.column === column);
+            const isSelected = selectedColumns.some(
+              (col) => col.column === column,
+            );
             return (
               <button
                 key={column}
@@ -399,15 +428,7 @@ const ColumnSelection = React.memo(
 );
 
 const DataPreview = React.memo(
-  ({
-    previewData,
-    selectedColumns,
-    downloadFilteredExcel,
-    currentPage,
-    totalPages,
-    setCurrentPage,
-  }) => {
-    // Create an array of unique column names
+  ({ previewData, selectedColumns, downloadFilteredExcel }) => {
     const uniqueColumns = useMemo(() => {
       return [...new Set(selectedColumns.map(({ column }) => column))];
     }, [selectedColumns]);
@@ -417,57 +438,45 @@ const DataPreview = React.memo(
         <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
           Preview
         </h2>
-        <div className="mb-6 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                {uniqueColumns.map((column) => (
-                  <th
-                    key={column}
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300"
-                  >
-                    {column}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
-              {previewData.map((row, index) => (
-                <tr key={index}>
-                  {uniqueColumns.map((column) => (
-                    <td
-                      key={column}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
-                    >
-                      {row[column]}
-                    </td>
+        <div className="mb-6 overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg">
+          <div className="overflow-x-auto">
+            <div className="overflow-y-auto max-h-[400px]">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300 sticky left-0 z-20 bg-gray-50 dark:bg-gray-800">
+                      Row
+                    </th>
+                    {uniqueColumns.map((column) => (
+                      <th
+                        key={column}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300 whitespace-nowrap"
+                      >
+                        {column}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+                  {previewData.map((row, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-900 z-10">
+                        {index + 1}
+                      </td>
+                      {uniqueColumns.map((column) => (
+                        <td
+                          key={column}
+                          className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
+                        >
+                          {row[column]}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex justify-between items-center mb-4">
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            Previous Page
-          </button>
-          <span className="text-gray-700 dark:text-gray-300">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            Next Page
-          </button>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <button
@@ -478,5 +487,5 @@ const DataPreview = React.memo(
         </button>
       </>
     );
-  }
+  },
 );
