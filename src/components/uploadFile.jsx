@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import MainLayout from "../layouts/mainLayout";
 import * as XLSX from "xlsx";
 import { Line, Bar, Pie, Scatter, Radar } from "react-chartjs-2";
@@ -33,6 +33,7 @@ export default function UploadFile() {
   const [excelFiles, setExcelFiles] = useState([]);
   const [currentFileIndex, setCurrentFileIndex] = useState(null);
   const [typeError, setTypeError] = useState("");
+  const fileInputRef = useRef(null);
 
   const handleFile = (e) => {
     const files = Array.from(e.target.files);
@@ -53,11 +54,16 @@ export default function UploadFile() {
         chartType: "",
         xAxis: "",
         yAxis: "",
-      }
+      },
+      id: Date.now() + Math.random()
     }));
 
     setExcelFiles(prevFiles => [...prevFiles, ...newFiles]);
     setTypeError("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleFileSubmit = async (e) => {
@@ -79,7 +85,6 @@ export default function UploadFile() {
           const worksheet = workbook.Sheets[sheetName];
           const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-          // Convert timestamp to desired format
           data.forEach((row, index) => {
             if (index > 0 && row[0]) {
               const date = XLSX.SSF.parse_date_code(row[0]);
@@ -101,7 +106,7 @@ export default function UploadFile() {
     }));
 
     setExcelFiles(updatedFiles);
-    setCurrentFileIndex(0);
+    setCurrentFileIndex(prevIndex => prevIndex === null ? 0 : prevIndex);
     setTypeError("");
   };
 
@@ -110,16 +115,13 @@ export default function UploadFile() {
   };
 
   const deleteFile = (index) => {
-    const newFiles = excelFiles.filter((_, i) => i !== index);
-    setExcelFiles(newFiles);
-
-    if (index === currentFileIndex) {
-      if (newFiles.length === 0) {
-        setCurrentFileIndex(null);
-      } else {
-        setCurrentFileIndex(Math.min(currentFileIndex, newFiles.length - 1));
+    setExcelFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+    setCurrentFileIndex(prevIndex => {
+      if (prevIndex === index) {
+        return prevIndex > 0 ? prevIndex - 1 : (excelFiles.length > 1 ? 0 : null);
       }
-    }
+      return prevIndex > index ? prevIndex - 1 : prevIndex;
+    });
   };
 
   const updateChartConfig = (key, value) => {
@@ -131,91 +133,91 @@ export default function UploadFile() {
   };
 
   const chartData = useMemo(() => {
-    if (currentFileIndex === null) return null;
+    if (currentFileIndex === null || !excelFiles[currentFileIndex]) return null;
 
     const currentFile = excelFiles[currentFileIndex];
     const { data, chartConfig } = currentFile;
 
-    if (data && chartConfig.xAxis && chartConfig.yAxis) {
-      const xIndex = data[0].indexOf(chartConfig.xAxis);
-      const yIndex = data[0].indexOf(chartConfig.yAxis);
+    if (!data || !chartConfig.xAxis || !chartConfig.yAxis) return null;
 
-      const labels = data.slice(1).map((row) => row[xIndex]);
-      const chartValues = data.slice(1).map((row) => row[yIndex]);
+    const xIndex = data[0].indexOf(chartConfig.xAxis);
+    const yIndex = data[0].indexOf(chartConfig.yAxis);
 
-      if (chartConfig.chartType === "line") {
-        return {
-          labels,
-          datasets: [
-            {
-              label: chartConfig.yAxis,
-              data: chartValues,
-              borderColor: "rgb(75, 192, 192)",
-              tension: 0.1,
-            },
-          ],
-        };
-      } else if (chartConfig.chartType === "bar") {
-        return {
-          labels,
-          datasets: [
-            {
-              label: chartConfig.yAxis,
-              data: chartValues,
-              backgroundColor: "rgba(0, 119, 182, 0.6)",
-              borderColor: "rgba(0, 119, 182, 1)",
-              borderWidth: 1,
-            },
-          ],
-        };
-      } else if (chartConfig.chartType === "pie") {
-        const uniqueLabels = [...new Set(labels)];
-        const dataCount = uniqueLabels.map((label) =>
-          labels.filter((l) => l === label).length
-        );
-        return {
-          labels: uniqueLabels,
-          datasets: [
-            {
-              data: dataCount,
-              backgroundColor: [
-                "rgba(255, 99, 132, 0.8)",
-                "rgba(54, 162, 235, 0.8)",
-                "rgba(255, 206, 86, 0.8)",
-                "rgba(75, 192, 192, 0.8)",
-                "rgba(153, 102, 255, 0.8)",
-              ],
-            },
-          ],
-        };
-      } else if (chartConfig.chartType === "scatter") {
-        return {
-          labels,
-          datasets: [
-            {
-              label: chartConfig.yAxis,
-              data: data.slice(1).map((row) => ({
-                x: row[xIndex],
-                y: row[yIndex],
-              })),
-              backgroundColor: "rgba(75, 192, 192, 0.2)",
-              borderColor: "rgb(75, 192, 192)",
-            },
-          ],
-        };
-      } else if (chartConfig.chartType === "radar") {
-        return {
-          labels,
-          datasets: [
-            {
-              label: chartConfig.yAxis,
-              data: chartValues,
-              backgroundColor: "rgba(75, 192, 192, 0.2)",
-              borderColor: "rgb(75, 192, 192)",
-            },
-          ],
-        };
-      }
+    const labels = data.slice(1).map((row) => row[xIndex]);
+    const chartValues = data.slice(1).map((row) => row[yIndex]);
+
+    if (chartConfig.chartType === "line") {
+      return {
+        labels,
+        datasets: [
+          {
+            label: chartConfig.yAxis,
+            data: chartValues,
+            borderColor: "rgb(75, 192, 192)",
+            tension: 0.1,
+          },
+        ],
+      };
+    } else if (chartConfig.chartType === "bar") {
+      return {
+        labels,
+        datasets: [
+          {
+            label: chartConfig.yAxis,
+            data: chartValues,
+            backgroundColor: "rgba(0, 119, 182, 0.6)",
+            borderColor: "rgba(0, 119, 182, 1)",
+            borderWidth: 1,
+          },
+        ],
+      };
+    } else if (chartConfig.chartType === "pie") {
+      const uniqueLabels = [...new Set(labels)];
+      const dataCount = uniqueLabels.map((label) =>
+        labels.filter((l) => l === label).length
+      );
+      return {
+        labels: uniqueLabels,
+        datasets: [
+          {
+            data: dataCount,
+            backgroundColor: [
+              "rgba(255, 99, 132, 0.8)",
+              "rgba(54, 162, 235, 0.8)",
+              "rgba(255, 206, 86, 0.8)",
+              "rgba(75, 192, 192, 0.8)",
+              "rgba(153, 102, 255, 0.8)",
+            ],
+          },
+        ],
+      };
+    } else if (chartConfig.chartType === "scatter") {
+      return {
+        labels,
+        datasets: [
+          {
+            label: chartConfig.yAxis,
+            data: data.slice(1).map((row) => ({
+              x: row[xIndex],
+              y: row[yIndex],
+            })),
+            backgroundColor: "rgba(75, 192, 192, 0.2)",
+            borderColor: "rgb(75, 192, 192)",
+          },
+        ],
+      };
+    } else if (chartConfig.chartType === "radar") {
+      return {
+        labels,
+        datasets: [
+          {
+            label: chartConfig.yAxis,
+            data: chartValues,
+            backgroundColor: "rgba(75, 192, 192, 0.2)",
+            borderColor: "rgb(75, 192, 192)",
+          },
+        ],
+      };
     }
     return null;
   }, [excelFiles, currentFileIndex]);
@@ -229,6 +231,7 @@ export default function UploadFile() {
 
         <form className="mb-6" onSubmit={handleFileSubmit}>
           <input
+            ref={fileInputRef}
             type="file"
             multiple
             accept=".xlsx,.xls,.csv"
@@ -240,7 +243,6 @@ export default function UploadFile() {
               hover:file:bg-blue-100
               dark:file:bg-blue-900 dark:file:text-blue-200
               dark:hover:file:bg-blue-800"
-            required
             onChange={handleFile}
           />
           <button
@@ -267,7 +269,7 @@ export default function UploadFile() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {excelFiles.map((fileObj, index) => (
                 <div
-                  key={index}
+                  key={fileObj.id}
                   className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
                     index === currentFileIndex
                       ? "border-blue-500 bg-blue-50 dark:bg-blue-900"
@@ -296,7 +298,7 @@ export default function UploadFile() {
           </div>
         )}
 
-        {currentFileIndex !== null && excelFiles[currentFileIndex].data && (
+        {currentFileIndex !== null && excelFiles[currentFileIndex] && excelFiles[currentFileIndex].data && (
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
             <h4 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
               Chart Configuration
