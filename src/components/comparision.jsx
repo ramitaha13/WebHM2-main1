@@ -2,36 +2,70 @@ import React, { useState, useCallback, useMemo } from "react";
 import { useDropzone } from "react-dropzone";
 import * as XLSX from "xlsx";
 import MainLayout from "../layouts/mainLayout";
+import {
+  FileList,
+  FileListItem,
+  SharedColumnsContainer,
+  SharedColumnsList,
+  ToggleButton,
+  FileTable,
+} from "../Style/comparisionStyle";
 
+// Main component for Excel file comparison
 export default function Comparision() {
+  // State to store processed Excel files
   const [excelFiles, setExcelFiles] = useState([]);
+  // State to handle and display errors
   const [error, setError] = useState(null);
+  // State to toggle display of original file contents
   const [showOriginalFiles, setShowOriginalFiles] = useState(false);
 
-  const processFile = (file) => {
-    return new Promise((resolve) => {
+  // Function to process an individual Excel file
+  const processFile = useCallback((file) => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet);
-        resolve({ name: file.name, data: json });
+        try {
+          // Convert file to array buffer
+          const data = new Uint8Array(e.target.result);
+          // Read the Excel workbook
+          const workbook = XLSX.read(data, { type: "array" });
+          // Get the first sheet
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          // Convert sheet to JSON
+          const json = XLSX.utils.sheet_to_json(worksheet);
+          resolve({ name: file.name, data: json });
+        } catch (error) {
+          reject(error);
+        }
       };
+      reader.onerror = (error) => reject(error);
       reader.readAsArrayBuffer(file);
-    });
-  };
-
-  const onDrop = useCallback((acceptedFiles) => {
-    Promise.all(acceptedFiles.map(processFile)).then((newFiles) => {
-      setExcelFiles((prevFiles) => [...prevFiles, ...newFiles]);
-      setError(null);
     });
   }, []);
 
+  // Callback function for handling file drops
+  const onDrop = useCallback(
+    (acceptedFiles) => {
+      Promise.all(acceptedFiles.map(processFile))
+        .then((newFiles) => {
+          // Add new files to the existing list
+          setExcelFiles((prevFiles) => [...prevFiles, ...newFiles]);
+          setError(null);
+        })
+        .catch((error) => {
+          console.error("Error processing files:", error);
+          setError("Error processing files. Please try again.");
+        });
+    },
+    [processFile],
+  );
+
+  // Set up react-dropzone
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    // Accept only Excel file formats
     accept: {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
         ".xlsx",
@@ -44,28 +78,41 @@ export default function Comparision() {
     },
   });
 
+  // Calculate shared columns across all uploaded files
   const sharedColumns = useMemo(() => {
     if (excelFiles.length < 2) return [];
-    const allColumns = excelFiles.map((file) => Object.keys(file.data[0]));
+    const allColumns = excelFiles.map((file) =>
+      Object.keys(file.data[0] || {}),
+    );
     return allColumns.reduce((shared, current) =>
       shared.filter((column) => current.includes(column)),
     );
   }, [excelFiles]);
 
-  const deleteFile = (indexToDelete) => {
+  // Function to delete a file from the list
+  const deleteFile = useCallback((indexToDelete) => {
     setExcelFiles((prevFiles) =>
       prevFiles.filter((_, index) => index !== indexToDelete),
     );
-  };
+  }, []);
 
-  const replaceFile = async (indexToReplace, newFile) => {
-    const processedFile = await processFile(newFile);
-    setExcelFiles((prevFiles) =>
-      prevFiles.map((file, index) =>
-        index === indexToReplace ? processedFile : file,
-      ),
-    );
-  };
+  // Function to replace a file in the list
+  const replaceFile = useCallback(
+    async (indexToReplace, newFile) => {
+      try {
+        const processedFile = await processFile(newFile);
+        setExcelFiles((prevFiles) =>
+          prevFiles.map((file, index) =>
+            index === indexToReplace ? processedFile : file,
+          ),
+        );
+      } catch (error) {
+        console.error("Error replacing file:", error);
+        setError("Error replacing file. Please try again.");
+      }
+    },
+    [processFile],
+  );
 
   return (
     <MainLayout>
@@ -74,156 +121,60 @@ export default function Comparision() {
           Excel File Comparison
         </h1>
 
+        {/* Dropzone for file uploads */}
         <div
           {...getRootProps()}
-          className={`mb-6 p-10 border-2 border-dashed rounded-lg text-center cursor-pointer transition duration-300 ease-in-out transform hover:scale-105 ${
-            isDragActive
-              ? "border-blue-400 bg-blue-100 dark:bg-blue-900"
-              : "border-gray-300 bg-gray-50 dark:bg-gray-800"
-          }`}
+          className="mb-6 p-10 border-2 border-dashed rounded-lg text-center cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           <input {...getInputProps()} />
-          <div className="flex flex-col items-center justify-center">
-            <svg
-              className="w-16 h-16 mb-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              ></path>
-            </svg>
-            {isDragActive ? (
-              <p className="text-lg font-semibold text-blue-500 dark:text-blue-300">
-                Drop the Excel files here ...
-              </p>
-            ) : (
-              <p className="text-lg font-semibold text-gray-600 dark:text-gray-300">
-                Drag 'n' drop Excel files here, or click to select files
-              </p>
-            )}
-          </div>
+          <p className="text-gray-600 dark:text-gray-300">
+            {isDragActive
+              ? "Drop the Excel files here ..."
+              : "Drag 'n' drop Excel files here, or click to select files"}
+          </p>
         </div>
 
+        {/* Error display */}
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
 
+        {/* List of uploaded files */}
         {excelFiles.length > 0 && (
-          <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
-              Uploaded Files
-            </h2>
-            <ul className="space-y-2">
-              {excelFiles.map((file, index) => (
-                <li key={index} className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    {file.name}
-                  </span>
-                  <div>
-                    <label className="mr-2 px-3 py-1 bg-blue-500 text-white rounded cursor-pointer hover:bg-blue-600">
-                      Replace
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".xlsx,.xls"
-                        onChange={(e) => replaceFile(index, e.target.files[0])}
-                      />
-                    </label>
-                    <button
-                      onClick={() => deleteFile(index)}
-                      className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <FileList>
+            {excelFiles.map((file, index) => (
+              <FileListItem
+                key={index}
+                fileName={file.name}
+                onReplace={(e) => replaceFile(index, e.target.files[0])}
+                onDelete={() => deleteFile(index)}
+              />
+            ))}
+          </FileList>
         )}
 
+        {/* Display shared columns when more than one file is uploaded */}
         {excelFiles.length > 1 && (
-          <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
-              Shared Columns
-            </h2>
+          <SharedColumnsContainer>
             {sharedColumns.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {sharedColumns.map((column) => (
-                  <span
-                    key={column}
-                    className="px-3 py-1 bg-blue-500 text-white rounded"
-                  >
-                    {column}
-                  </span>
-                ))}
-              </div>
+              <SharedColumnsList columns={sharedColumns} />
             ) : (
               <p className="text-gray-700 dark:text-gray-300">
                 No Shared Columns Found
               </p>
             )}
-          </div>
+          </SharedColumnsContainer>
         )}
 
+        {/* Toggle button to show/hide original file contents */}
         {excelFiles.length > 0 && (
-          <div className="flex justify-center mb-6">
-            <button
-              onClick={() => setShowOriginalFiles(!showOriginalFiles)}
-              className="px-6 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105"
-            >
-              {showOriginalFiles
-                ? "Hide Original Files"
-                : "Show Original Files"}
-            </button>
-          </div>
+          <ToggleButton
+            onClick={() => setShowOriginalFiles(!showOriginalFiles)}
+            showOriginalFiles={showOriginalFiles}
+          />
         )}
 
+        {/* Display original file contents when toggled */}
         {showOriginalFiles &&
-          excelFiles.map((file, fileIndex) => (
-            <div
-              key={file.name}
-              className="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden"
-            >
-              <h2 className="text-xl font-semibold p-4 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">
-                {file.name}
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-800">
-                    <tr>
-                      {Object.keys(file.data[0]).map((column) => (
-                        <th
-                          key={column}
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300"
-                        >
-                          {column}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
-                    {file.data.slice(0, 10).map((row, rowIndex) => (
-                      <tr key={rowIndex}>
-                        {Object.values(row).map((value, valueIndex) => (
-                          <td
-                            key={valueIndex}
-                            className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
-                          >
-                            {value}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
+          excelFiles.map((file) => <FileTable key={file.name} file={file} />)}
       </div>
     </MainLayout>
   );
