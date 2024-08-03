@@ -8,7 +8,8 @@ import About from "./components/about";
 import UploadFile from "./components/uploadFile";
 import CombineFiles from "./components/combineFiles";
 import Comparision from "./components/comparision";
-import braudeLogo from './assets/braude_logo.png';
+import braudeLogo from "./assets/braude_logo.png";
+import { DarkModeProvider } from "./Style/DarkModeContext";
 
 const router = createBrowserRouter([
   {
@@ -43,8 +44,8 @@ const router = createBrowserRouter([
 
 // Function to set the favicon
 function setFavicon(url) {
-  const link = document.createElement('link');
-  link.rel = 'icon';
+  const link = document.createElement("link");
+  link.rel = "icon";
   link.href = url;
   document.head.appendChild(link);
 }
@@ -53,4 +54,8 @@ function setFavicon(url) {
 setFavicon(braudeLogo);
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<RouterProvider router={router} />);
+root.render(
+  <DarkModeProvider>
+    <RouterProvider router={router} />
+  </DarkModeProvider>,
+);

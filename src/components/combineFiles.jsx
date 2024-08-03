@@ -9,6 +9,7 @@ import {
   ColumnSelection,
   DataPreview,
 } from "../Style/combineFilesStyle";
+import { useDarkMode } from "../Style/DarkModeContext"; // Import useDarkMode from your context
 
 // Optimized Excel date conversion function
 const EXCEL_DATE_OFFSET = 25569;
@@ -30,6 +31,7 @@ function formatDate(date) {
 }
 
 export default function CombineFiles() {
+  const { isDarkMode } = useDarkMode(); // Get the isDarkMode value from the context
   const [excelFiles, setExcelFiles] = useState([]);
   const [columns, setColumns] = useState({});
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -250,7 +252,7 @@ export default function CombineFiles() {
   return (
     <MainLayout>
       <div className="p-6 max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
+        <h1 className={`text-3xl font-bold mb-6 text-center ${isDarkMode ? 'text-white' : 'text-indigo-600'}`}>
           Multi-Excel Column Selector
         </h1>
 

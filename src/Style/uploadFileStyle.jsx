@@ -1,29 +1,46 @@
-// uploadFileStyle.jsx
+// src/Style/uploadFileStyle.jsx
 import React from "react";
+import { useDarkMode } from "./DarkModeContext"; // Import the dark mode context
 
 // Container for the entire component
-export const Container = ({ children }) => (
-  <div className="max-w-7xl mx-auto p-8 bg-gray-100 min-h-screen">
-    {children}
-  </div>
-);
+export const Container = ({ children }) => {
+  const { isDarkMode } = useDarkMode(); // Get the isDarkMode value from the context
+
+  return (
+    <div
+      className={`max-w-7xl mx-auto p-8 ${isDarkMode ? "bg-gray-900" : "bg-gray-100"} min-h-screen`}
+    >
+      {children}
+    </div>
+  );
+};
 
 // Page title styling
-export const PageTitle = ({ children }) => (
-  <h1 className="text-4xl font-bold text-center text-indigo-600 mb-8">
-    {children}
-  </h1>
-);
+export const PageTitle = ({ children }) => {
+  const { isDarkMode } = useDarkMode();
+
+  return (
+    <h1
+      className={`text-4xl font-bold text-center ${isDarkMode ? "text-gray-100" : "text-indigo-600"} mb-8`}
+    >
+      {children}
+    </h1>
+  );
+};
 
 // Styling for the upload button
-export const UploadButton = ({ children, ...props }) => (
-  <label
-    className="bg-indigo-600 text-white py-2 px-4 rounded cursor-pointer hover:bg-indigo-700 transition duration-300"
-    {...props}
-  >
-    {children}
-  </label>
-);
+export const UploadButton = ({ children, ...props }) => {
+  const { isDarkMode } = useDarkMode();
+
+  return (
+    <label
+      className={`py-2 px-4 rounded cursor-pointer hover:bg-indigo-700 transition duration-300 ${isDarkMode ? "bg-indigo-700 text-white" : "bg-indigo-600 text-white"}`}
+      {...props}
+    >
+      {children}
+    </label>
+  );
+};
 
 // Hidden file input
 export const FileInput = React.forwardRef((props, ref) => (
@@ -36,14 +53,30 @@ export const Grid = ({ children }) => (
 );
 
 // Card styling
-export const Card = ({ children }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md">{children}</div>
-);
+export const Card = ({ children }) => {
+  const { isDarkMode } = useDarkMode();
+
+  return (
+    <div
+      className={`p-6 rounded-lg shadow-md ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+    >
+      {children}
+    </div>
+  );
+};
 
 // Card title styling
-export const CardTitle = ({ children }) => (
-  <h2 className="text-2xl font-semibold text-indigo-600 mb-4">{children}</h2>
-);
+export const CardTitle = ({ children }) => {
+  const { isDarkMode } = useDarkMode();
+
+  return (
+    <h2
+      className={`text-2xl font-semibold mb-4 ${isDarkMode ? "text-gray-100" : "text-indigo-600"}`}
+    >
+      {children}
+    </h2>
+  );
+};
 
 // File list styling
 export const FileList = ({ children }) => (
@@ -51,21 +84,30 @@ export const FileList = ({ children }) => (
 );
 
 // File item styling
-export const FileItem = ({ children }) => (
-  <li className="flex justify-between items-center bg-gray-50 p-3 rounded">
-    {children}
-  </li>
-);
+export const FileItem = ({ children }) => {
+  const { isDarkMode } = useDarkMode();
+
+  return (
+    <li
+      className={`flex justify-between items-center p-3 rounded ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}
+    >
+      {children}
+    </li>
+  );
+};
 
 // File name styling
-export const FileName = ({ children, ...props }) => (
-  <span
-    className="text-gray-700 cursor-pointer hover:text-indigo-600 transition duration-300"
-    {...props}
-  >
-    {children}
-  </span>
-);
+export const FileName = ({ children, ...props }) => {
+  const { isDarkMode } = useDarkMode();
+  return (
+    <span
+      className={`cursor-pointer hover:text-indigo-600 transition duration-300 ${isDarkMode ? "text-gray-100" : "text-indigo-600"}`}
+      {...props}
+    >
+      {children}
+    </span>
+  );
+};
 
 // Delete button styling
 export const DeleteButton = ({ children, ...props }) => (
@@ -78,11 +120,16 @@ export const DeleteButton = ({ children, ...props }) => (
 );
 
 // Label styling for form inputs
-export const Label = ({ children }) => (
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    {children}
-  </label>
-);
+export const Label = ({ children }) => {
+  const { isDarkMode } = useDarkMode();
+  return (
+    <label
+      className={`block text-sm font-medium text-gray-700 mb-2 ${isDarkMode ? "text-gray-100" : "text-indigo-600"}`}
+    >
+      {children}
+    </label>
+  );
+};
 
 // Select input styling
 export const Select = ({ children, ...props }) => (

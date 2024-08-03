@@ -10,6 +10,7 @@ import {
   ToggleButton,
   FileTable,
 } from "../Style/comparisionStyle";
+import { useDarkMode } from "../Style/DarkModeContext"; // Import useDarkMode from your context
 
 // Main component for Excel file comparison
 export default function Comparision() {
@@ -19,6 +20,8 @@ export default function Comparision() {
   const [error, setError] = useState(null);
   // State to toggle display of original file contents
   const [showOriginalFiles, setShowOriginalFiles] = useState(false);
+
+  const { isDarkMode } = useDarkMode(); // Get the isDarkMode value from the context
 
   // Function to process an individual Excel file
   const processFile = useCallback((file) => {
@@ -117,17 +120,23 @@ export default function Comparision() {
   return (
     <MainLayout>
       <div className="p-6 max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center text-gray-900 dark:text-white">
+        <h1
+          className={`text-3xl font-bold mb-6 text-center ${isDarkMode ? "text-white" : "text-indigo-600"}`}
+        >
           Excel File Comparison
         </h1>
 
         {/* Dropzone for file uploads */}
         <div
           {...getRootProps()}
-          className="mb-6 p-10 border-2 border-dashed rounded-lg text-center cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+          className={`mb-6 p-10 border-2 border-dashed rounded-lg text-center cursor-pointer ${
+            isDarkMode
+              ? "bg-gray-800 hover:bg-gray-700"
+              : "bg-gray-50 hover:bg-gray-100"
+          }`}
         >
           <input {...getInputProps()} />
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className={`${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
             {isDragActive
               ? "Drop the Excel files here ..."
               : "Drag 'n' drop Excel files here, or click to select files"}

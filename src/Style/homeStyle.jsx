@@ -1,32 +1,57 @@
 // src/Style/HomeStyle.jsx
 import React from "react";
 import { Link } from "react-router-dom";
+import { useDarkMode } from "./DarkModeContext"; // Import the dark mode context
 
-const HomeStyle = ({ children }) => (
-  <div className="flex flex-col lg:flex-row items-center justify-between mt-4 sm:mt-8 md:mt-12">
-    {children}
-  </div>
-);
+const HomeStyle = ({ children }) => {
+  const { isDarkMode } = useDarkMode(); // Get the isDarkMode value from the context
 
-export const TextContent = ({ children }) => (
-  <div className="text-black dark:text-white lg:max-w-xl">{children}</div>
-);
+  return (
+    <div className={`flex flex-col lg:flex-row items-center justify-between mt-4 sm:mt-8 md:mt-12 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
+      {children}
+    </div>
+  );
+};
 
-export const MainTitle = ({ children }) => (
-  <h1 className="text-blue-800 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight sm:leading-normal">
-    {children}
-  </h1>
-);
+export const TextContent = ({ children }) => {
+  const { isDarkMode } = useDarkMode(); // Get the isDarkMode value from the context
 
-export const SubTitle = ({ children }) => (
-  <h3 className="text-xl sm:text-2xl md:text-3xl font-semibold mt-2 sm:mt-3 md:mt-5">
-    {children}
-  </h3>
-);
+  return (
+    <div className={`text-black dark:text-white lg:max-w-xl ${isDarkMode ? 'text-gray-300' : 'text-black'}`}>
+      {children}
+    </div>
+  );
+};
 
-export const Paragraph = ({ children }) => (
-  <p className="text-sm sm:text-base mt-2 sm:mt-3 md:mt-5">{children}</p>
-);
+export const MainTitle = ({ children }) => {
+  const { isDarkMode } = useDarkMode(); // Get the isDarkMode value from the context
+
+  return (
+    <h1 className={`text-blue-800 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight sm:leading-normal ${isDarkMode ? 'text-white' : ''}`}>
+      {children}
+    </h1>
+  );
+};
+
+export const SubTitle = ({ children }) => {
+  const { isDarkMode } = useDarkMode(); // Get the isDarkMode value from the context
+
+  return (
+    <h3 className={`text-xl sm:text-2xl md:text-3xl font-semibold mt-2 sm:mt-3 md:mt-5 ${isDarkMode ? 'text-gray-300' : 'text-black'}`}>
+      {children}
+    </h3>
+  );
+};
+
+export const Paragraph = ({ children }) => {
+  const { isDarkMode } = useDarkMode(); // Get the isDarkMode value from the context
+
+  return (
+    <p className={`text-sm sm:text-base mt-2 sm:mt-3 md:mt-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+      {children}
+    </p>
+  );
+};
 
 export const ButtonContainer = ({ children }) => (
   <div className="mt-4 sm:mt-6 md:mt-10">{children}</div>
