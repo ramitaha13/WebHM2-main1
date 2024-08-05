@@ -15,10 +15,15 @@ import { useDarkMode } from "../Style/DarkModeContext"; // Import useDarkMode fr
 const EXCEL_DATE_OFFSET = 25569;
 const MS_PER_DAY = 86400000;
 function excelDateToJSDate(serial) {
+  // Check if the serial number is within a reasonable date range
+  if (serial < 1 || serial > 2958465) { // 2958465 is Excel's representation of 9999-12-31
+    return null;
+  }
   return new Date((serial - EXCEL_DATE_OFFSET) * MS_PER_DAY);
 }
 
 function formatDate(date) {
+  if (!date) return "";
   return date.toLocaleString("en-GB", {
     day: "2-digit",
     month: "2-digit",
@@ -194,8 +199,11 @@ export default function CombineFiles() {
         for (let R = range.s.r + 1; R <= range.e.r; ++R) {
           const cell = file.worksheet[XLSX.utils.encode_cell({r:R, c:columnIndex})];
           let value = cell ? cell.v : undefined;
-          if (typeof value === "number" && value > 1) {
-            value = formatDate(excelDateToJSDate(value));
+          if (typeof value === "number") {
+            const dateValue = excelDateToJSDate(value);
+            if (dateValue && !isNaN(dateValue.getTime())) {
+              value = formatDate(dateValue);
+            }
           }
           data[column].push(value);
         }
